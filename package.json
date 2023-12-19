@@ -1,0 +1,40 @@
+{
+  "name": "not-a-framework",
+  "version": "0.1.0",
+  "description": "NAF is Not A Framework for Lightning 3",
+  "main": "index.ts",
+  "type": "module",
+  "directories": {
+    "doc": "docs",
+    "example": "example"
+  },
+  "scripts": {
+    "dev": "vite serve ./examples/ --host --open",
+    "build": "vite build",
+    "serve": "vite preview",
+    "docs": "npx typedoc ./index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lightning-js/not-a-framework.git"
+  },
+  "keywords": [
+    "Lightning",
+    "Lightning3",
+    "Wrapper",
+    "NotAFramework"
+  ],
+  "author": "Wouter van Boesschoten <wouter@wouterlucas.com>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/lightning-js/not-a-framework/issues"
+  },
+  "homepage": "https://github.com/lightning-js/not-a-framework#readme",
+  "dependencies": {
+    "@lightningjs/renderer": "^0.6.0"
+  },
+  "devDependencies": {
+    "typedocs": "^0.6.7",
+    "vite": "^5.0.10"
+  }
+}
