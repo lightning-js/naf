@@ -18,7 +18,7 @@
 import {
   MainCoreDriver,
   RendererMain,
-  type INodeWritableProps,
+  type RendererMainSettings,
   type INode
 } from '@lightningjs/renderer';
 
@@ -29,18 +29,23 @@ export const getRootNode = () => {
     return rootNode;
 }
 
-export const initRenderer = async () => {
+export const initRenderer = async (settings: RendererMainSettings = {}, canvasDiv: string = 'app') => {
     if (renderer) {
         console.error('Renderer already initialized');
         return;
     }
 
-    const driver = new MainCoreDriver();
-    renderer = new RendererMain({
+    const defaultSettings = {
         appWidth: 1900,
         appHeight: 1080,
         clearColor: 0x00000000,
-    }, 'app', driver);
+    };
+
+    const driver = new MainCoreDriver();
+    renderer = new RendererMain({
+        ...defaultSettings,
+        ...settings,
+    }, canvasDiv, driver);
 
     await renderer.init();
 
