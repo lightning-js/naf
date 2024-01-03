@@ -19,7 +19,6 @@ import {
   type INode,
   type INodeWritableProps,
   type ITextNodeWritableProps,
-  type INodeAnimatableProps,
 } from '@lightningjs/renderer';
 
 import { getRootNode, renderer } from './renderer/renderer.js';
@@ -68,31 +67,29 @@ export interface ISceneNode extends INode {
  */
 export const Node = (key: string, parent: ISceneNode | null, props: Partial<INodeWritableProps> | Partial<ITextNodeWritableProps> = {}): ISceneNode => {
     const parentNode = parent ? parent.get() : getRootNode();
-    let node: INode | null = null;
     let children: ISceneNode[] = [];
 
-    const render = () => {
+    const createLightningNode = () => {
         if (!renderer) {
-            return;
+            throw new Error('Renderer not initialized');
         }
 
         if ('text' in props) {
-            node = renderer.createTextNode({
+            return renderer.createTextNode({
                 ...props,
                 parent: parentNode
             });
-            return;
         }
 
-        node = renderer.createNode({
+        return renderer.createNode({
             ...props,
             parent: parentNode
         });
     };
 
-    render();
+    const lightningNode = createLightningNode();
 
-    const _node = {
+    const sceneNode = {
         add(child: ISceneNode) {
             children.push(child);
         },
@@ -105,18 +102,17 @@ export const Node = (key: string, parent: ISceneNode | null, props: Partial<INod
             children.forEach((child) => child.destroy());
 
             // should we wait for animation to finish? *shrug*
-            node?.destroy();
-            node = null;
+            lightningNode.destroy();
         },
-        find(k: string) {
+        find (k: string) {
             if (key === k) {
-                return this;
+                return proxy;
             }
-
+    
             return children.find((child) => child.find(key)) || null;
         },
         get() {
-            return node;
+            return lightningNode;
         },
         remove(child: ISceneNode) {
             const index = children.indexOf(child);
@@ -126,25 +122,23 @@ export const Node = (key: string, parent: ISceneNode | null, props: Partial<INod
         }
     };
 
-    const proxy = new Proxy(_node, {
-        get(target, prop: string) {
+    const proxy = new Proxy(sceneNode, {
+        get(target: ISceneNode, prop: keyof ISceneNode) {
             if (prop in target) {
-                // @ts-ignore
                 return target[prop];
             }
             
-            return node ? node[prop as keyof INodeAnimatableProps || prop as keyof ITextNodeWritableProps] : null;
+            return lightningNode ? (lightningNode as any)[prop] : null;
         },
-        set(target, prop: string, value) {
+        set(target: ISceneNode, prop: keyof ISceneNode, value: any) {
             if (prop in target) {
-                // @ts-ignore
-                target[prop] = value;
-            } else if (node && value !== undefined) {
-                node[prop as keyof INodeAnimatableProps || prop as keyof ITextNodeWritableProps] = value;
+                (target as any)[prop as keyof ISceneNode] = value;
+            } else if (lightningNode && value !== undefined) {
+                (lightningNode as any)[prop as keyof INode] = value;
             }
             return true;
         }
-    });
+    }) as ISceneNode;
 
-    return proxy as ISceneNode;
+    return proxy;
 }

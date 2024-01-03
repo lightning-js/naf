@@ -69,4 +69,4 @@ All other getter/setters are the Lightning 3 nodes exposed directly. Such as `x`
 
 # Docs
 
-For more information you can find the docs [here](https://github.com/lightning-js/not-a-framework/tree/main/docs/index.html)
+For more information you can find the docs [here](https://lightning-js.github.io/naf/)

@@ -22,6 +22,8 @@ import {
   type INode
 } from '@lightningjs/renderer';
 
+import Extensions from './test.js';
+
 export let renderer: any | null = null;
 
 let rootNode: INode | null = null;
@@ -45,6 +47,8 @@ export const initRenderer = async (settings: RendererMainSettings = {}, canvasDi
     renderer = new RendererMain({
         ...defaultSettings,
         ...settings,
+        // fix me - for some reason this throws a vite class error
+        //coreExtensionModule: Extensions,
     }, canvasDiv, driver);
 
     await renderer.init();

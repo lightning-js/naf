@@ -16,6 +16,16 @@
   </head>
   <body>
     <div id="app"></div>
-    <script type="module" src="./index.ts"></script>
+    <script>
+      // Get the query parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const scriptName = urlParams.get('test') || 'index';
+
+      // Load the script
+      const script = document.createElement('script');
+      script.type = 'module';
+      script.src = `./${scriptName}.ts`;
+      document.body.appendChild(script);
+    </script>
   </body>
 </html>
