@@ -199,6 +199,8 @@ export const Scene = (template: ITemplate, parent: ISceneNode | null = null): IS
             }
 
             if (isNested) {
+                // remove props from original props
+                delete props.props;
                 parseTemplate(props, node);
             }
         });
