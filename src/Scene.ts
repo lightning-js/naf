@@ -186,7 +186,7 @@ export const Scene = (template: ITemplate, parent: ISceneNode | null = null): IS
             let isNested = false;
             const keyProps = Object.keys(props);
       
-            if (keyProps.length === 1 && keyProps.includes('props')) {
+            if (keyProps.length > 0 && keyProps.includes('props')) {
                 isNested = true;
             }
 
