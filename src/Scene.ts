@@ -189,7 +189,7 @@ export const Scene = (template: ITemplate, parent: ISceneNode | null = null): IS
             if (keyProps.length === 1 && keyProps.includes('props')) {
                 isNested = true;
             }
-            
+
             const node = Node(key, parent, isNested ? props.props : props);
 
             if (!parent) {
@@ -216,7 +216,7 @@ export const Scene = (template: ITemplate, parent: ISceneNode | null = null): IS
             return sceneChildNodes;
         },
         find(key: string): ISceneNode | null {
-            return sceneChildNodes.find((child) => child.find(key)) || null;
+            return sceneChildNodes.map((child) => child.find(key)).filter((child) => child !== null)[0] || null;
         },
         on(event: string, callback: any) {
             addEventListener(event, callback);

@@ -49,6 +49,10 @@ export interface ISceneNode extends INode {
      */
     get: () => INode | null;
     /**
+     * Get the key of the node
+     */
+    key: () => string;
+    /**
      * Removes a child node from the tree, this will unmount the node and destroy it.
      * 
      * @param child 
@@ -109,10 +113,13 @@ export const Node = (key: string, parent: ISceneNode | null, props: Partial<INod
                 return proxy;
             }
     
-            return children.find((child) => child.find(key)) || null;
+            return children.map((child) => child.find(k)).filter((child) => child !== null)[0] || null;
         },
         get() {
             return lightningNode;
+        },
+        key() {
+            return key;
         },
         remove(child: ISceneNode) {
             const index = children.indexOf(child);
@@ -139,6 +146,12 @@ export const Node = (key: string, parent: ISceneNode | null, props: Partial<INod
             return true;
         }
     }) as ISceneNode;
+
+    parent?.add(proxy);
+
+    if (!parent) {
+        console.warn(`Dangling node: ${key} no parent, adding to root`);
+    }
 
     return proxy;
 }
