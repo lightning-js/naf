@@ -36,6 +36,6 @@
   },
   "devDependencies": {
     "typedocs": "^0.6.7",
-    "vite": "^6.4.3"
+    "vite": "^8.2.2"
   }
 }
