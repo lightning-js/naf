@@ -16,45 +16,54 @@
  */
 
 import {
-  MainCoreDriver,
   RendererMain,
   type RendererMainSettings,
-  type INode
+  type INode,
 } from '@lightningjs/renderer';
+import { WebGlRenderer } from '@lightningjs/renderer/webgl';
+import { CanvasTextRenderer } from '@lightningjs/renderer/canvas';
+import { SdfTextRenderer } from '@lightningjs/renderer/webgl';
 
-import Extensions from './test.js';
+import { flushExtensions } from './extensions.js';
 
-export let renderer: any | null = null;
+export let renderer: RendererMain | null = null;
 
 let rootNode: INode | null = null;
 export const getRootNode = () => {
-    return rootNode;
-}
+  return rootNode;
+};
 
-export const initRenderer = async (settings: RendererMainSettings = {}, canvasDiv: string = 'app') => {
-    if (renderer) {
-        console.error('Renderer already initialized');
-        return;
-    }
+export const initRenderer = async (
+  settings: Partial<RendererMainSettings> = {},
+  canvasDiv: string = 'app',
+) => {
+  if (renderer) {
+    console.error('Renderer already initialized');
+    return;
+  }
 
-    const defaultSettings = {
-        appWidth: 1900,
-        appHeight: 1080,
-        clearColor: 0x00000000,
-    };
+  const defaultSettings: Partial<RendererMainSettings> = {
+    appWidth: 1900,
+    appHeight: 1080,
+    clearColor: 0x00000000,
+    renderEngine: WebGlRenderer as any,
+    fontEngines: [SdfTextRenderer, CanvasTextRenderer] as any,
+  };
 
-    const driver = new MainCoreDriver();
-    renderer = new RendererMain({
-        ...defaultSettings,
-        ...settings,
-        // fix me - for some reason this throws a vite class error
-        //coreExtensionModule: Extensions,
-    }, canvasDiv, driver);
+  renderer = new RendererMain(
+    {
+      ...defaultSettings,
+      ...settings,
+    },
+    canvasDiv,
+  );
 
-    await renderer.init();
+  // Load any fonts registered via addWebFont/addSdfFont and register
+  // any shader effects registered via addEffect.
+  await flushExtensions(renderer);
 
-    rootNode = renderer.createNode({
-        color: 0,
-        parent: renderer.root,
-    });
+  rootNode = renderer.createNode({
+    color: 0,
+    parent: renderer.root,
+  });
 };

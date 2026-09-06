@@ -15,8 +15,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { INodeWritableProps, ITextNodeWritableProps } from '@lightningjs/renderer';
-import { Node, type ISceneNode } from './Node.js';
+import { type INodeProps, type ITextNodeProps } from '@lightningjs/renderer';
+import { Node, type ISceneNode, type NodeProps } from './Node.js';
 
 export interface IScene {
     /**
@@ -78,7 +78,7 @@ export interface IScene {
  * Props is required for nested nodes, this represents the props of the parent node when nesting.
  */
 export interface IProps {
-    props: Partial<INodeWritableProps>;
+    props: NodeProps;
 }
 
 /**
@@ -94,7 +94,7 @@ export interface IProps {
  * }
  * ```
  * 
- * The keys of the template are used to find nodes in the scene so they require to be unique. The values of each key can be either `INodeWritableProps` or `ITextNodeWritableProps` and is used to manipulate the coordinates of the parent node when nesting.
+ * The keys of the template are used to find nodes in the scene so they require to be unique. The values of each key can be either `INodeProps` or `ITextNodeProps` and is used to manipulate the coordinates of the parent node when nesting.
  * 
  * @remark
  * Nesting has 1 special case, when nesting a node you need to wrap the props in a `props` object. For example:
@@ -110,7 +110,7 @@ export interface IProps {
  * Without the props object the nested node will not be created or rendered.
  */
 export interface ITemplate {
-    [key: string]: Partial<INodeWritableProps> | Partial<ITextNodeWritableProps> | ITemplate | IProps | null;
+    [key: string]: NodeProps | ITemplate | IProps | null;
 }
 
 const keyEvents = {
@@ -128,7 +128,7 @@ const supportedEvents = Object.keys(keyEvents);
  * Create a new scene, creates new Lightning 3 nodes and renders them to the scene.
  * 
  * @remark
- * The `props` of the template can be either `INodeWritableProps` or `ITextNodeWritableProps` and is used to manipulate the coordinates of the parent node when nesting.
+ * The `props` of the template can be either `INodeProps` or `ITextNodeProps` and is used to manipulate the coordinates of the parent node when nesting.
  * 
  * @param template The JSON template of the scene
  * @param parent Optional parent node, if no parent is provided the scene will be rendered to the root node.

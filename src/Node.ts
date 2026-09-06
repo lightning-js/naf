@@ -17,11 +17,36 @@
 
 import {
   type INode,
-  type INodeWritableProps,
-  type ITextNodeWritableProps,
+  type INodeProps,
+  type ITextNodeProps,
 } from '@lightningjs/renderer';
 
 import { getRootNode, renderer } from './renderer/renderer.js';
+
+/**
+ * Legacy NAF props accepted `width` / `height` aliases. The Renderer uses
+ * `w` / `h`, so translate them here to stay backwards compatible.
+ */
+export type NodeProps = Partial<INodeProps> &
+  Partial<ITextNodeProps> & {
+    width?: number;
+    height?: number;
+  };
+
+export const normalizeProps = (props: NodeProps): Record<string, unknown> => {
+  const { width, height, ...rest } = props as Record<string, unknown> & {
+    width?: number;
+    height?: number;
+  };
+  const normalized: Record<string, unknown> = { ...rest };
+  if (width !== undefined && (normalized as any).w === undefined) {
+    (normalized as any).w = width;
+  }
+  if (height !== undefined && (normalized as any).h === undefined) {
+    (normalized as any).h = height;
+  }
+  return normalized;
+};
 
 export interface ISceneNode extends INode {
     /**
@@ -66,10 +91,10 @@ export interface ISceneNode extends INode {
  * 
  * @param key Unique key for the node (used for finding nodes)
  * @param parent Parent to attach the node to
- * @param props Lightning 3 rendering props (see INodeWritableProps or ITextNodeWritableProps)
+ * @param props Lightning 3 rendering props (see INodeProps or ITextNodeProps)
  * @returns ISceneNode
  */
-export const Node = (key: string, parent: ISceneNode | null, props: Partial<INodeWritableProps> | Partial<ITextNodeWritableProps> = {}): ISceneNode => {
+export const Node = (key: string, parent: ISceneNode | null, props: NodeProps = {}): ISceneNode => {
     const parentNode = parent ? parent.get() : getRootNode();
     let children: ISceneNode[] = [];
 
@@ -78,15 +103,17 @@ export const Node = (key: string, parent: ISceneNode | null, props: Partial<INod
             throw new Error('Renderer not initialized');
         }
 
-        if ('text' in props) {
+        const normalized = normalizeProps(props);
+
+        if ('text' in normalized) {
             return renderer.createTextNode({
-                ...props,
+                ...normalized,
                 parent: parentNode
             });
         }
 
         return renderer.createNode({
-            ...props,
+            ...normalized,
             parent: parentNode
         });
     };
@@ -130,16 +157,16 @@ export const Node = (key: string, parent: ISceneNode | null, props: Partial<INod
     };
 
     const proxy = new Proxy(sceneNode, {
-        get(target: ISceneNode, prop: keyof ISceneNode) {
+        get(target: typeof sceneNode, prop: string | symbol) {
             if (prop in target) {
-                return target[prop];
+                return (target as any)[prop];
             }
             
             return lightningNode ? (lightningNode as any)[prop] : null;
         },
-        set(target: ISceneNode, prop: keyof ISceneNode, value: any) {
+        set(target: typeof sceneNode, prop: string | symbol, value: any) {
             if (prop in target) {
-                (target as any)[prop as keyof ISceneNode] = value;
+                (target as any)[prop as keyof typeof sceneNode] = value;
             } else if (lightningNode && value !== undefined) {
                 (lightningNode as any)[prop as keyof INode] = value;
             }
