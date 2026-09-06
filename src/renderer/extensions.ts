@@ -17,48 +17,177 @@
  * limitations under the License.
  */
 
-import {
-    CoreExtension,
-    WebTrFontFace,
-    SdfTrFontFace,
-    type Stage,
-    type TrFontFaceDescriptors,
-} from '@lightningjs/renderer/core';
+import type { RendererMain } from '@lightningjs/renderer';
+import { renderer } from './renderer.js';
 
-// not exported by the renderer so lets define it here
-type SdfFontType = 'ssdf' | 'msdf';
-
-let webFonts: { family: string; descriptors: Partial<TrFontFaceDescriptors>; url: string; }[] = [];
-let sdfFonts: { family: string; descriptors: Partial<TrFontFaceDescriptors>; type: SdfFontType; url: string; jsonUrl: string; }[] = [];
-let effects: { name: string; effect: any; }[] = [];
-
-export const addWebFont = (family: string, descriptors: Partial<TrFontFaceDescriptors>, url: string) => {
-    webFonts.push({ family, descriptors, url });
+interface WebFontEntry {
+  family: string;
+  url: string;
+  metrics?: Record<string, number>;
 }
 
-export const addSdfFont = (family: string, descriptors: Partial<TrFontFaceDescriptors>, type: SdfFontType, url: string, jsonUrl: string) => {
-    sdfFonts.push({ family, descriptors, type, url, jsonUrl });
+interface SdfFontEntry {
+  family: string;
+  url: string;
+  jsonUrl: string;
+  metrics?: Record<string, number>;
 }
+
+interface EffectEntry {
+  name: string;
+  effect: any;
+}
+
+const webFonts: WebFontEntry[] = [];
+const sdfFonts: SdfFontEntry[] = [];
+const effects: EffectEntry[] = [];
+
+const isMetricsLike = (obj: unknown): obj is Record<string, number> => {
+  if (!obj || typeof obj !== 'object') {
+    return false;
+  }
+  const keys = Object.keys(obj);
+  return keys.some((k) =>
+    ['ascender', 'descender', 'lineGap', 'unitsPerEm'].includes(k),
+  );
+};
+
+/**
+ * Register a Canvas web font (.ttf/.woff/.woff2).
+ *
+ * Can be called before or after {@link initRenderer}. Fonts registered before
+ * init are loaded right after the renderer is created; fonts registered after
+ * init are loaded immediately.
+ *
+ * Backwards compatible with the 0.6.x signature
+ * `addWebFont(family, descriptors, url)`.
+ */
+export const addWebFont = (
+  family: string,
+  descriptorsOrUrl: Record<string, unknown> | string,
+  url?: string,
+) => {
+  let fontUrl: string;
+  let metrics: Record<string, number> | undefined;
+
+  if (typeof descriptorsOrUrl === 'string') {
+    fontUrl = descriptorsOrUrl;
+  } else {
+    if (url === undefined) {
+      throw new Error(
+        `addWebFont('${family}'): missing font URL. Use addWebFont(family, url) or addWebFont(family, descriptors, url).`,
+      );
+    }
+    fontUrl = url;
+    if (isMetricsLike(descriptorsOrUrl)) {
+      metrics = descriptorsOrUrl as Record<string, number>;
+    }
+  }
+
+  const entry = { family, url: fontUrl, metrics };
+  webFonts.push(entry);
+
+  if (renderer) {
+    loadWebFont(renderer, entry).catch((err) =>
+      console.error(`Failed to load web font '${family}':`, err),
+    );
+  }
+};
+
+/**
+ * Register an SDF font (pre-generated atlas png + json).
+ *
+ * Backwards compatible with the 0.6.x signature
+ * `addSdfFont(family, descriptors, type, url, jsonUrl)`. The old `type`
+ * ('ssdf' | 'msdf') and `descriptors` arguments are accepted but ignored
+ * (except when descriptors look like font metrics, in which case they are
+ * forwarded as metrics).
+ */
+export const addSdfFont = (
+  family: string,
+  descriptorsOrType: Record<string, unknown> | string,
+  typeOrUrl: string,
+  urlOrJsonUrl?: string,
+  jsonUrl?: string,
+) => {
+  let atlasUrl: string;
+  let atlasDataUrl: string;
+  let metrics: Record<string, number> | undefined;
+
+  if (jsonUrl !== undefined && urlOrJsonUrl !== undefined) {
+    // full old signature: (family, descriptors, type, url, jsonUrl)
+    atlasUrl = urlOrJsonUrl;
+    atlasDataUrl = jsonUrl;
+    if (isMetricsLike(descriptorsOrType)) {
+      metrics = descriptorsOrType as Record<string, number>;
+    }
+  } else if (urlOrJsonUrl !== undefined) {
+    // (family, type, url, jsonUrl) without descriptors
+    atlasUrl = typeOrUrl;
+    atlasDataUrl = urlOrJsonUrl;
+  } else {
+    // new minimal signature: (family, url, jsonUrl)
+    atlasUrl = descriptorsOrType as string;
+    atlasDataUrl = typeOrUrl;
+  }
+
+  const entry = { family, url: atlasUrl, jsonUrl: atlasDataUrl, metrics };
+  sdfFonts.push(entry);
+
+  if (renderer) {
+    loadSdfFont(renderer, entry).catch((err) =>
+      console.error(`Failed to load SDF font '${family}':`, err),
+    );
+  }
+};
 
 export const addEffect = (name: string, effect: any) => {
-    effects.push({ name, effect });
-}
+  const entry = { name, effect };
+  effects.push(entry);
 
-export default class Extensions extends CoreExtension {
-    async run(stage: Stage) {
-    webFonts.forEach(({ family, descriptors, url }) => {
-        stage.fontManager.addFontFace(
-            new WebTrFontFace(family, descriptors, url),
-        );
-    });
-
-    sdfFonts.forEach(({ family, descriptors, type, url, jsonUrl }) => {
-        stage.fontManager.addFontFace(
-            new SdfTrFontFace(family, descriptors, type, stage, url, jsonUrl),
-        );
-    });
-
-    //@ts-ignore TS wants to define 'name' as keyof ShaderEffect, however that type isnt exposed by the renderer
-    effects.forEach(({ name, effect }) => stage.shManager.registerEffectType(name, effect));
+  if (renderer) {
+    registerEffect(renderer, entry);
   }
-}
+};
+
+const loadWebFont = async (r: RendererMain, { family, url, metrics }: WebFontEntry) => {
+  await r.stage.loadFont('canvas', {
+    fontFamily: family,
+    fontUrl: url,
+    ...(metrics ? { metrics: metrics as any } : {}),
+  });
+};
+
+const loadSdfFont = async (
+  r: RendererMain,
+  { family, url, jsonUrl, metrics }: SdfFontEntry,
+) => {
+  await r.stage.loadFont('sdf', {
+    fontFamily: family,
+    atlasUrl: url,
+    atlasDataUrl: jsonUrl,
+    ...(metrics ? { metrics: metrics as any } : {}),
+  });
+};
+
+const registerEffect = (r: RendererMain, { name, effect }: EffectEntry) => {
+  r.stage.shManager.registerShaderType(name, effect);
+};
+
+/**
+ * Load all queued fonts and register all queued shader effects.
+ * Called once by {@link initRenderer} after the Renderer is constructed.
+ */
+export const flushExtensions = async (r: RendererMain) => {
+  for (const entry of webFonts) {
+    await loadWebFont(r, entry);
+  }
+
+  for (const entry of sdfFonts) {
+    await loadSdfFont(r, entry);
+  }
+
+  for (const entry of effects) {
+    registerEffect(r, entry);
+  }
+};
